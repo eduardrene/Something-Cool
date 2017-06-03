@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>The Cube Wireframe</title>
+		<style>
+			body { margin: 0;}
+			canvas { width: 100%; height: 100% }
+			
+			h1#title {
+				font-family: 'Bahiana', cursive;
+				font-size:75px;
+				position: absolute;
+				margin-top:30px;
+				margin-left:100px;
+				z-index: -1;
+			}
+			
+			h1 span {
+				color: #2FA1D6;
+			}
+			
+			h2#the {
+				font-family: 'Bahiana', cursive;
+				font-size:35px;
+				position: absolute;
+				margin-top:10px;
+				margin-left:100px;
+				z-index: -1;
+			}
+			
+			/* DAT.GUI */
+			.dg li.title {
+				color: white;
+				background-color: #6e6e6e !important; 
+				text-shadow:none;
+				font-size: 12px;
+			}
+			.dg li.cr{
+				color: #424242; 
+				text-shadow:none; 
+				background-color: transparent !important; 
+				border-left-color: #2FA1D6 !important;
+				border-bottom-color: #2FA1D6 !important;
+				font-size: 12px;
+			}
+			.dg .slider {
+				background-color: white !important;
+				border:solid 1px !important;
+				border-color: #6e6e6e !important;
+			}
+			.dg input {
+				background-color: white !important;
+				color: #2FA1D6 !important;
+			}
+			.dg div.close-button {
+				color:white; 
+				background-color: #424242 !important;
+				font-size: 12px;
+			}
+			.dg div.close-button:hover{ background-color: #2FA1D6 !important;
+			}
+									
+		</style>
+		
+		<!-- Just adding the necessary libraries: -->
+			<!-- TRHEE.JS main library -->
+			<script src="js/three.js"></script>
+			
+			<!-- ORBIT CAMERA library to create the camera controls -->
+			<script src="js/OrbitControls.js"></script>
+			
+			<!-- CSG libraries to create the geometry unions -->
+			<!-- <script src="js/csg.js"></script> -->
+			<script src="js/ThreeCSG.js"></script>
+			
+			<!-- Libraries to allow us to save the scene to .STL file  -->
+			<script src="js/FileSaver.js"></script>
+			<script src="js/STLExporter.js"></script>
+			
+			<!-- Library to allow to play with variables  -->
+			<script type="text/javascript" src="js/dat_gui/dat.gui.js"></script>
+		<!-- No more libraries -->
+		
+		<!-- Just adding google fonts: -->
+			<link href="https://fonts.googleapis.com/css?family=Bahiana" rel="stylesheet">
+		<!-- No more fonts -->
+		
+	</head>
+	<body>
+		<!-- Adding the title to our appweb -->
+		<h1 id="title">App <span>"</span>Title<span>"</span></h1>
+		<h2 id="the">Our</h2>
+		
+		<!-- Canvas inside container's id DIV tag -->
+		<div id="container"></div>
+		
+		<!-- Let's add our javascript code!!! -->
+		<script>
+
+			// VARIABLES:
+			var scene, camera, renderer;		// Main variables
+			var controls, container;			// Variables to avoid problems between GUI and OrbitControls
+			var gui, parameters;				// Variables for our GUI menu
+			
+			// Some variables at the moment to start
+			var wire_thickness = 1.5;			// "Wireframe" thickness
+			var h = 10;							// "Floor" height
+			var segments = 16;					// Number of segments (cylinders and spheres)
+			var fileName = "MyCubeWireframed"	// STL file name
+			var floors = 2;						// Number of floors (2 = ground + first floor)
+		
+			// Definition of the material
+			var material = new THREE.MeshLambertMaterial( {color: 0x2FA1D6} );
+			
+			// Variables to create our geometries (spheres & cylinders)
+			var cylinder, cylinder2, sphere;	// Beams, columns & corners
+							
+			// LIGHTS:
+			var ambientLight = new THREE.AmbientLight (0x0c0c0c);
+			var directionalLight1 = new THREE.DirectionalLight (0xffffff);
+			var directionalLight2 = new THREE.DirectionalLight (0xffffff);
+			directionalLight1.position.set(1,0.75,0.5).normalize();
+			directionalLight2.position.set(-1,0.75,-0.5).normalize();
+			
+			// Array to keep all our data
+			var corner = [];
+			var beam_rect = [];
+			var beam_cross = [];
+			var column = [];
+			
+			// Array to define activity (on/off)
+			var beam_rect_on = [];
+			var beam_cross_on = [];
+			for (var i=0; i<floors; i++){
+				beam_rect_on[i] = true;
+				beam_cross_on[i] = true;
+			}
+			
+			// Main functions to run our project!!!
+			init ();
+			animate();
+			
+			/* --- */
+			
+					
+			// MAIN FUNCTIONS:
+		
+			// INIT FUNCTION
+			function init(){
+				// SCENE:
+				scene = new THREE.Scene();
+				
+				// CAMERA & ORBIT CONTROLS:		
+				camera = new THREE.PerspectiveCamera (75, window.innerWidth/window.innerHeight, 0.1, 1000 );;
+				camera.position.set(25, 20, 15);
+				camera.lookAt(new THREE.Vector3(0, 0, 0));
+				controls = new THREE.OrbitControls( camera, document.getElementById( 'container' ));
+				controls.addEventListener( 'change', render );
+				
+				// RENDERER:
+				renderer = new THREE.WebGLRenderer({ alpha: true }); 		// We allow a transparent background
+				renderer.setClearColor( 0xf2f2f2,0.25 );					// We decide a clear gray color for the background
+				renderer.setSize(window.innerWidth, window.innerHeight);
+				container = document.getElementById( 'container' );
+				container.appendChild( renderer.domElement );
+				window.addEventListener( 'resize', onWindowResize, false );
+				
+				// CONSOLA DE CONTROL
+				//displayGUI();	
+				
+			} // end of init		
+			
+			// ANIMATION FUNCTION
+			// Here we create the loop to be able to modify our geometry 
+			function animate(){
+				update();
+				requestAnimationFrame( animate );
+				render();
+			}
+		
+			// RENDER FUNCTION
+			function render(){
+				renderer.clear();
+				renderer.render( scene, camera );
+			}
+			
+			// FUNCTION TO CONTROL THE WINDOW RESIZE ASPECT AND RATIO
+			function onWindowResize(){
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}
+			
+			
+			/* --- */
+			/* 	FINS AQUI TOT ÉS CORRECTE FALTA ACTIVAR I DEFINIR LA FUNCIÓ UPDATE UN COP TINGUEM CLAR 
+				LES FUNCIONS "BUILDER" PER ESFERES, PLANTES I PARETS...
+				A PARTIR D'AQUI TREBALLEM AMB AQUESTES FUNCIONS MENCIONADES... */
+			
+			// FUNCTION TO CREATE THE ANIMATION
+			function update(){
+				while(scene.children.length > 0){ 
+					scene.remove(scene.children[0]); 
+				}
+				
+				sphereBuilder(floors,h);
+				beamBuilder (floors, h);
+				//cylinderBuilder(0,0,0,0);
+				//addCubeOnSide (negX, posX, negY, posY, negZ, posZ);
+				scene.add(ambientLight);
+				scene.add (directionalLight1, directionalLight2);
+				//alert(corner.length); //PROVES
+				//alert(cylinder.length); //PROVES
+				//sphere.length = 0;	//PROVES
+				//cylinder.length = 0;	//PROVES
+			}
+			
+			
+			// OUR FIRST BUILDER: we create all our cube corners with spheres
+			function sphereBuilder (floor, height){
+				
+				sphere = new THREE.SphereGeometry( wire_thickness, segments, segments/2);
+				
+				for (var i=0; i<floor; i++){
+				
+					var x = h; 
+					var y = 0; 				// axis Y = axis Z
+					var z = h;
+					corner[i] = [];			// Array for each floor
+					var inc = i * height;	// Increment = i times the height of the floor
+				
+					for (var j=0; j<4; j++){
+					
+						x = -x;					// Switching X value (-+-+)
+								
+						if ((j == 2) || (j == 3)){
+							z = -Math.abs(z);	// Switching Z value (++--)
+						}
+							
+						corner[i][j] = new THREE.Mesh( sphere, material );
+						corner[i][j].position.set (x/2, y+inc, z/2);
+						
+						scene.add( corner[i][j]);
+					}
+				}
+			} // end of sphereBuilder
+			
+			// OUR SECOND BUILDER: we create all the beams for each floor
+			function beamBuilder (floor, height){
+			
+				for (var i=0; i<floor; i++){
+					
+					if (beam_rect_on[i] == true){			
+					
+						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
+						var x = h; 
+						var y = h; 
+						var z = h;
+						
+						beam_rect[i] = [];		// Array for each floor
+						var inc = i * height;	// Increment = i times the height of the floor
+									
+						for (var j=0; j<4; j++){ //En movem entre els 4 cylindres
+							
+							
+							if (j < 2){
+								x = -x;
+								y = 0;
+								z = 0;
+							}
+							
+							if (j > 1) {
+								if (z == 0){z = h;} // Restart of Z value
+								x = 0;
+								y = 0;
+								z = -z;
+							}
+											
+							beam_rect[i][j] = new THREE.Mesh( cylinder, material );
+							beam_rect[i][j].position.set (x/2, y/2+inc, z/2);
+						
+							// Cylinder rotation
+							if (j < 2){beam_rect[i][j].rotation.x = Math.PI / 2;}
+							if (j > 1){beam_rect[i][j].rotation.z = Math.PI / 2;}
+							
+							scene.add(beam_rect[i][j]);
+						}
+					}
+					
+					if (beam_cross_on[i] == true){
+				
+						// Aquesta es la longitud entre punts!!!
+						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i][3].position );
+						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
+						
+						beam_cross[i] = [];		// Array for each floor
+						var inc = i * height;	// Increment = i times the height of the floor
+						
+						for (var j=0; j<2; j++){ //En movem entre els 2 cylindres
+						
+							beam_cross[i][j] = new THREE.Mesh( cylinder, material );
+							beam_cross[i][j].position.set (0, inc, 0);
+						
+							// Cylinder rotation
+							beam_cross[i][j].rotation.z = Math.PI / 2;
+							if (j==0){beam_cross[i][j].rotation.y = Math.PI / 4;}
+							if (j==1){beam_cross[i][j].rotation.y = - Math.PI / 4;}
+							
+							scene.add( beam_cross[i][j] );
+						}
+					}
+					
+				}
+			} // end of beamBuilder
+			
+			
+			
+			
+			/*
+			// OUR SECOND BUILDER: we create all our cube edges with cylinders
+			function cylinderBuilder (incX,incY,incZ,cube){
+			
+				edge = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
+				var x = h; var y = h; var z = h;
+				var start;
+				
+				switch (cube){
+					
+					case 0: 		start = 0; 	break;
+					case "negX":	start = 12;	break;
+					case "posX":	start = 24;	break;
+					case "negY":	start = 36;	break;
+					case "posY":	start = 48;	break;
+					case "negZ":	start = 60;	break;
+					case "posZ":	start = 72;	break;					
+				}
+				
+				for (var i=start; i<start+12; i++){
+				
+					if (i < start+4){	// Loop within the first 4 cylinders
+						x = 0;			// X value is 0
+						y = -y;			// Switching Y value (-+-+)
+						
+						if ((i == start+2) || (i == start+3)){
+							z = -Math.abs(z);
+						}
+					}
+										
+					if ((i > start+3) && (i < start+8)){
+						if (x == 0){x = h;} // Restart of X value
+						x = -x;				// Switching X value (-+-+)
+						y = 0;				// Y value is 0
+						z = h;				// Restart of Z value
+						
+						if ((i == start+6) || (i == start+7)){
+							z = -Math.abs(z);
+						}
+					}
+					
+					if (i > start+7){		// Loop within the last 4 cylinders
+						if (y == 0){y = h;} // Restart of Y value
+						x = -x;				// Switching X value (-+-+)
+						z = 0;				// Z value is 0
+						
+						if ((i == start+10) || (i == start+11)){
+							y = -Math.abs(y);
+						}
+					}
+					//alert("cylinder["+i+"] position is x="+x+", y="+y+", z="+z);
+					cylinder[i] = new THREE.Mesh( edge, material );
+					cylinder[i].position.set (x/2+incX, y/2+incY, z/2+incZ);
+					
+					//	Cylinder rotation
+					if (i < start+4){cylinder[i].rotation.z = Math.PI / 2;}
+					if (i > start+7){cylinder[i].rotation.x = Math.PI / 2;}
+					
+					scene.add( cylinder[i]);
+				}
+				// Restart the array, just in case
+				if (cylinder.length == 85){cylinder.length = 0}
+			}
+			*/
+			
+			
+			
+			
+			
+			
+			
+			
+		</script>
+	</body>
+</html>
