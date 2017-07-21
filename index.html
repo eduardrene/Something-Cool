@@ -108,7 +108,7 @@
 			var h = 10;							// "Floor" height
 			var segments = 16;					// Number of segments (cylinders and spheres)
 			var fileName = "MyCubeWireframed"	// STL file name
-			var floors = 3;						// Number of floors (2 = ground + first floor)
+			var floors = 6;						// Number of floors (2 = ground + first floor)
 		
 			// Definition of the material
 			var material = new THREE.MeshLambertMaterial( {color: 0x2FA1D6} );
@@ -130,6 +130,10 @@
 			var column_rect = [];
 			var column_cross = [];
 			var column_cross2 = [];
+
+			// Roof variables
+			var roof_top;
+			var roof_edge = [];
 			
 			// Array to define activity (on/off)
 			var beam_rect_on = [];
@@ -138,13 +142,17 @@
 			var column_cross_on = [];
 			var column_cross2_on = [];
 			
-			for (var i=0; i<floors; i++){
-				beam_rect_on[i] = true;
-				beam_cross_on[i] = true;
-				column_rect_on[i] = true;
-				column_cross_on[i] = true;
-				column_cross2_on[i] = true;
+			for (var i=0; i<6; i++){
+				beam_rect_on[i] = false;
+				beam_cross_on[i] = false;
+				column_rect_on[i] = false;
+				column_cross_on[i] = false;
+				column_cross2_on[i] = false;
 			}
+			
+			beam_rect_on[0] = true;
+			column_rect_on[0] = true;
+			var roof_on = false;
 			
 			// Main functions to run our project!!!
 			init ();
@@ -176,7 +184,7 @@
 				window.addEventListener( 'resize', onWindowResize, false );
 				
 				// CONSOLA DE CONTROL
-				//displayGUI();	
+				displayGUI();	
 				
 			} // end of init		
 			
@@ -216,6 +224,9 @@
 				sphereBuilder(floors,h);
 				beamBuilder (floors, h);
 				columnBuilder (floors-1, h);
+				roofBuilder(floors, h);
+				
+				
 				//cylinderBuilder(0,0,0,0);
 				//addCubeOnSide (negX, posX, negY, posY, negZ, posZ);
 				scene.add(ambientLight);
@@ -234,9 +245,9 @@
 				
 				for (var i=0; i<floor; i++){
 				
-					var x = h; 
+					var x = height; 
 					var y = 0; 				// axis Y = axis Z
-					var z = h;
+					var z = height;
 					corner[i] = [];			// Array for each floor
 					var inc = i * height;	// Increment = i times the height of the floor
 				
@@ -252,8 +263,10 @@
 						corner[i][j].position.set (x/2, y+inc, z/2);
 						
 						scene.add( corner[i][j]);
+						
 					}
 				}
+				
 			} // end of sphereBuilder()
 			
 			// OUR SECOND BUILDER: we create all the beams for each floor
@@ -264,15 +277,14 @@
 					if (beam_rect_on[i] == true){			
 					
 						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
-						var x = h; 
-						var y = h; 
-						var z = h;
+						var x = height; 
+						var y = height; 
+						var z = height;
 						
 						beam_rect[i] = [];		// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
 									
 						for (var j=0; j<4; j++){ // We move within the 4 cylindres
-							
 							
 							if (j < 2){
 								x = -x;
@@ -300,7 +312,7 @@
 					
 					if (beam_cross_on[i] == true){
 				
-						// Aquesta es la longitud entre punts!!!
+						// Lenght between two points!!!
 						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i][3].position );
 						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
 						
@@ -332,9 +344,9 @@
 					if (column_rect_on[i] == true){			
 					
 						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
-						var x = h; 
-						var y = h; 
-						var z = h;
+						var x = height; 
+						var y = height; 
+						var z = height;
 						
 						column_rect[i] = [];	// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
@@ -358,9 +370,9 @@
 						// Aquesta es la longitud entre punts!!!
 						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i+1][1].position );
 						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
-						var x = h; 
-						var y = h; 
-						var z = h;
+						var x = height; 
+						var y = height; 
+						var z = height;
 						
 						column_cross[i] = [];	// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
@@ -387,14 +399,14 @@
 						
 						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i+1][3].position );
 						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
-						var x = h; 
-						var y = h; 
-						var z = h;
+						var x = height; 
+						var y = height; 
+						var z = height;
 					
 						column_cross2[i] = [];	// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
 					
-						for (var j=0; j<4; j++){ // We move within the 2 cylindres
+						for (var j=0; j<4; j++){ // We move within the 4 cylindres
 						
 							column_cross2[i][j] = new THREE.Mesh( cylinder, material );
 							column_cross2[i][j].position.set (0, y/2+inc, 0);
@@ -406,15 +418,447 @@
 							if ((j==1)||(j==3)){column_cross2[i][j].rotation.x = - Math.PI / 4;}
 							
 							scene.add( column_cross2[i][j] );
-						
 						}
-					}					
+					}
 				}
 			} // end of columnBuilder()
 			
+			// OUR FORTH BUILDER: we create the roof
+			function roofBuilder (floor, height){
+			
+				if (roof_on == true){			
+			
+					// We define the top of the roof
+					sphere = new THREE.SphereGeometry( wire_thickness, segments, segments/2);
+					roof_top = new THREE.Mesh( sphere, material );
+					roof_top.position.set (0, (floor*height - height/2), 0);	
+					scene.add( roof_top );
+					
+					// We define the edges of the roof
+					var point1 = new THREE.Vector3(height, 0, height);
+					var point2 = new THREE.Vector3(0, height, 0);
+					var dist = point1.distanceTo( point2 );
+					
+					cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, dist/2, segments );
+					var x = height; 
+					var y = height; 
+					var z = height;
+					var inc = floor * height;	// Increment = x times the height of the floor
+					
+					for (var i=0; i<4; i++){ // We move within the 4 cylindres
+						
+						roof_edge[i] = new THREE.Mesh( cylinder, material );
+						
+						if (i==0){
+							roof_edge[i].position.set (x/4, (floor*height - height/2) - y/4, -z/4);
+							roof_edge[i].rotation.z = 35.26 * Math.PI / 180;
+							roof_edge[i].rotation.x = Math.PI / 4;
+						} else if (i==1){
+							roof_edge[i].position.set (x/4, (floor*height - height/2) - y/4, z/4);
+							roof_edge[i].rotation.z = 35.26 * Math.PI / 180;
+							roof_edge[i].rotation.x = -Math.PI / 4;
+						} else if (i==2){
+							roof_edge[i].position.set (-x/4, (floor*height - height/2) - y/4, -z/4);
+							roof_edge[i].rotation.z = -35.26 * Math.PI / 180;
+							roof_edge[i].rotation.x = Math.PI / 4;
+						} else if (i==3){
+							roof_edge[i].position.set (-x/4, (floor*height - height/2) - y/4, z/4);
+							roof_edge[i].rotation.z = -35.26 * Math.PI / 180;
+							roof_edge[i].rotation.x = -Math.PI / 4;
+						}
+						
+						scene.add( roof_edge[i] );
+					}
+				}
+			} //end of roofBuilder()
 			
 			
 			
+			/* --- */
+			
+			/* 	JA TENIM LES FUNCIONS "BUILDER" PER ESFERES, PLANTES I PARETS CREATS, 
+				A PARTIR D'AQUI TREBALLEM AMB EL MENU GUI... */
+				
+			// FUNCTION TO CREATE OUR MENU AND TO AVE THE CONTROL OF VARIABLE MODIFICATIONS			
+			function displayGUI(){
+				var gui = new dat.GUI();
+				
+				parameters = {
+					thickness: wire_thickness,
+					h: h,
+					n_floors: floors-1,
+					name: fileName,
+					createSTL: function(){save()},
+					
+					// Buttons
+					next_to_first: function(){next_to_first()},
+					next_to_second: function(){next_to_second()},
+					next_to_third: function(){next_to_third()},
+					next_to_forth: function(){next_to_forth()},
+					next_to_roof: function(){next_to_roof()},
+					
+					// Checklist of displaying:
+					// Ground Floor
+					display_beam_rect_0: beam_rect_on[0],
+					display_beam_cross_0: beam_cross_on[0],
+					display_column_rect_0: column_rect_on[0],
+					display_column_cross_0: column_cross_on[0],
+					display_column_cross2_0: column_cross2_on[0],
+					// First Floor
+					display_beam_rect_1: beam_rect_on[1],
+					display_beam_cross_1: beam_cross_on[1],
+					display_column_rect_1: column_rect_on[1],
+					display_column_cross_1: column_cross_on[1],
+					display_column_cross2_1: column_cross2_on[1],
+					// Second Floor
+					display_beam_rect_2: beam_rect_on[2],
+					display_beam_cross_2: beam_cross_on[2],
+					display_column_rect_2: column_rect_on[2],
+					display_column_cross_2: column_cross_on[2],
+					display_column_cross2_2: column_cross2_on[2],
+					// Third Floor
+					display_beam_rect_3: beam_rect_on[3],
+					display_beam_cross_3: beam_cross_on[3],
+					display_column_rect_3: column_rect_on[3],
+					display_column_cross_3: column_cross_on[3],
+					display_column_cross2_3: column_cross2_on[3],
+					// Forth Floor
+					display_beam_rect_4: beam_rect_on[4],
+					display_beam_cross_4: beam_cross_on[4],
+					display_column_rect_4: column_rect_on[4],
+					display_column_cross_4: column_cross_on[4],
+					display_column_cross2_4: column_cross2_on[4],
+					// Roof
+					display_beam_rect_5: beam_rect_on[5],
+					display_beam_cross_5: beam_cross_on[5],
+					display_roof: roof_on,
+					
+				}	
+			
+				var custom = gui.addFolder ("Customize the size");
+				var thickness = custom.add (parameters, "thickness").min(0.5).max(25).step(0.5).name("Thickness");
+				var size = custom.add (parameters, "h").min(1).max(200).step(1).name("Size (x,y,z)");
+				//var n_floors = custom.add (parameters, "n_floors").min(0).max(5).step(1).name("Number of floors");
+			
+				size.onChange(function (value){h = value;});
+				thickness.onChange(function (value){wire_thickness = value;});
+				//n_floors.onChange(function (value){floors = value+1;});
+			
+				custom.open();
+				
+				// UI for each floor
+				var gui_floor_folder = gui.addFolder ("Define the floors");
+				
+				// Ground Floor
+				if (parameters.n_floors > 0){
+					
+					var gui_floor_0 = gui_floor_folder.addFolder ("Ground Floor");
+					gui_floor_0.open();
+					
+					var beam_rect_0 = gui_floor_0.add(parameters, "display_beam_rect_0").name("Rect Beams");
+					var beam_cross_0 = gui_floor_0.add(parameters, "display_beam_cross_0").name("Cross Beams");
+					var column_rect_0 = gui_floor_0.add(parameters, "display_column_rect_0").name("Rect Columns");
+					var column_cross_0 = gui_floor_0.add(parameters, "display_column_cross_0").name("Cross Columns");
+					var column_cross2_0 = gui_floor_0.add(parameters, "display_column_cross2_0").name("Diagonal Columns");
+					
+					beam_rect_0.onChange(function (value){beam_rect_on[0] = value});
+					beam_cross_0.onChange(function (value){beam_cross_on[0] = value});
+					column_rect_0.onChange(function (value){column_rect_on[0] = value});
+					column_cross_0.onChange(function (value){column_cross_on[0] = value});
+					column_cross2_0.onChange(function (value){column_cross2_on[0] = value});
+					
+					gui_floor_0.add(parameters, 'next_to_first').name("Continue");
+				}
+				
+				// First Floor
+				if (parameters.n_floors > 1){
+				
+					var gui_floor_1 = gui_floor_folder.addFolder ("First Floor");
+					
+					var beam_rect_1 = gui_floor_1.add(parameters, "display_beam_rect_1").name("Rect Beams");
+					var beam_cross_1 = gui_floor_1.add(parameters, "display_beam_cross_1").name("Cross Beams");
+					var column_rect_1 = gui_floor_1.add(parameters, "display_column_rect_1").name("Rect Columns");
+					var column_cross_1 = gui_floor_1.add(parameters, "display_column_cross_1").name("Cross Columns");
+					var column_cross2_1 = gui_floor_1.add(parameters, "display_column_cross2_1").name("Diagonal Columns");
+					
+					beam_rect_1.onChange(function (value){beam_rect_on[1] = value});
+					beam_cross_1.onChange(function (value){beam_cross_on[1] = value});
+					column_rect_1.onChange(function (value){column_rect_on[1] = value});
+					column_cross_1.onChange(function (value){column_cross_on[1] = value});
+					column_cross2_1.onChange(function (value){column_cross2_on[1] = value});
+					
+					gui_floor_1.add(parameters, 'next_to_second').name("Continue");
+				}
+				
+				// Second Floor
+				if (parameters.n_floors > 2){
+					
+					var gui_floor_2 = gui_floor_folder.addFolder ("Second Floor");
+					
+					var beam_rect_2 = gui_floor_2.add(parameters, "display_beam_rect_2").name("Rect Beams");
+					var beam_cross_2 = gui_floor_2.add(parameters, "display_beam_cross_2").name("Cross Beams");
+					var column_rect_2 = gui_floor_2.add(parameters, "display_column_rect_2").name("Rect Columns");
+					var column_cross_2 = gui_floor_2.add(parameters, "display_column_cross_2").name("Cross Columns");
+					var column_cross2_2 = gui_floor_2.add(parameters, "display_column_cross2_2").name("Diagonal Columns");
+					
+					beam_rect_2.onChange(function (value){beam_rect_on[2] = value});
+					beam_cross_2.onChange(function (value){beam_cross_on[2] = value});
+					column_rect_2.onChange(function (value){column_rect_on[2] = value});
+					column_cross_2.onChange(function (value){column_cross_on[2] = value});
+					column_cross2_2.onChange(function (value){column_cross2_on[2] = value});
+					
+					gui_floor_2.add(parameters, 'next_to_third').name("Continue");
+				}
+				
+				// Third Floor
+				if (parameters.n_floors > 3){
+					
+					var gui_floor_3 = gui_floor_folder.addFolder ("Third Floor");
+					
+					var beam_rect_3 = gui_floor_3.add(parameters, "display_beam_rect_3").name("Rect Beams");
+					var beam_cross_3 = gui_floor_3.add(parameters, "display_beam_cross_3").name("Cross Beams");
+					var column_rect_3 = gui_floor_3.add(parameters, "display_column_rect_3").name("Rect Columns");
+					var column_cross_3 = gui_floor_3.add(parameters, "display_column_cross_3").name("Cross Columns");
+					var column_cross2_3 = gui_floor_3.add(parameters, "display_column_cross2_3").name("Diagonal Columns");
+					
+					beam_rect_3.onChange(function (value){beam_rect_on[3] = value});
+					beam_cross_3.onChange(function (value){beam_cross_on[3] = value});
+					column_rect_3.onChange(function (value){column_rect_on[3] = value});
+					column_cross_3.onChange(function (value){column_cross_on[3] = value});
+					column_cross2_3.onChange(function (value){column_cross2_on[3] = value});
+					
+					gui_floor_3.add(parameters, 'next_to_forth').name("Continue");
+				}
+				
+				// Forth Floor
+				if (parameters.n_floors > 4){
+					
+					var gui_floor_4 = gui_floor_folder.addFolder ("Forth Floor");
+					
+					var beam_rect_4 = gui_floor_4.add(parameters, "display_beam_rect_4").name("Rect Beams");
+					var beam_cross_4 = gui_floor_4.add(parameters, "display_beam_cross_4").name("Cross Beams");
+					var column_rect_4 = gui_floor_4.add(parameters, "display_column_rect_4").name("Rect Columns");
+					var column_cross_4 = gui_floor_4.add(parameters, "display_column_cross_4").name("Cross Columns");
+					var column_cross2_4 = gui_floor_4.add(parameters, "display_column_cross2_4").name("Diagonal Columns");
+					
+					beam_rect_4.onChange(function (value){beam_rect_on[4] = value});
+					beam_cross_4.onChange(function (value){beam_cross_on[4] = value});
+					column_rect_4.onChange(function (value){column_rect_on[4] = value});
+					column_cross_4.onChange(function (value){column_cross_on[4] = value});
+					column_cross2_4.onChange(function (value){column_cross2_on[4] = value});
+					
+					gui_floor_4.add(parameters, 'next_to_roof').name("Continue");
+				}
+				
+				// Roof
+				//if (parameters.n_floors > 4){
+					
+					var gui_roof = gui_floor_folder.addFolder ("Roof");
+					
+					var beam_rect_5 = gui_roof.add(parameters, "display_beam_rect_5").name("Rect Beams");
+					var beam_cross_5 = gui_roof.add(parameters, "display_beam_cross_5").name("Cross Beams");
+					var roof = gui_roof.add(parameters, "display_roof").name("Add roof");
+					
+					beam_rect_5.onChange(function (value){beam_rect_on[5] = value});
+					beam_cross_5.onChange(function (value){beam_cross_on[5] = value});
+					roof.onChange(function (value){roof_on = value});
+				//}
+				
+				var ex_STL = gui.addFolder ("Export your STL file");
+				var STLname = ex_STL.add(parameters, 'name').name("File name");
+				ex_STL.add(parameters, 'createSTL').name("Export it!");
+				
+				STLname.onFinishChange(function (value){fileName = value});
+				ex_STL.open();
+				
+				gui_floor_folder.open();
+				
+				// "next" FUNCTIONS
+				function next_to_first(){
+					if ((column_rect_on[0]==false) && (column_cross_on[0]==false) && (column_cross2_on[0]==false)){
+						floors = 1;
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();						
+						gui_roof.open();	
+					}else{
+						gui_floor_0.close();
+						gui_floor_1.open();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();
+						gui_roof.close();
+					}
+				}
+				function next_to_second(){	
+					if ((column_rect_on[1]==false) && (column_cross_on[1]==false) && (column_cross2_on[1]==false)){
+						floors = 2;
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();						
+						gui_roof.open();
+					}else{
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.open();
+						gui_floor_3.close();
+						gui_floor_4.close();
+						gui_roof.close();
+					}	
+				}
+				function next_to_third(){
+					if ((column_rect_on[2]==false) && (column_cross_on[2]==false) && (column_cross2_on[2]==false)){
+						floors = 3;
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();						
+						gui_roof.open();	
+					}else{
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.open();
+						gui_floor_4.close();						
+						gui_roof.close();
+					}
+				}
+				function next_to_forth(){
+					if ((column_rect_on[3]==false) && (column_cross_on[3]==false) && (column_cross2_on[3]==false)){
+						floors = 4;
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();						
+						gui_roof.open();	
+					}else{
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.open();
+						gui_roof.close();
+					}
+				}
+				function next_to_roof(){
+					if ((column_rect_on[4]==false) && (column_cross_on[4]==false) && (column_cross2_on[4]==false)){
+						floors = 5;
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();
+						gui_floor_4.close();						
+						gui_roof.open();	
+					}else{
+						gui_floor_0.close();
+						gui_floor_1.close();
+						gui_floor_2.close();
+						gui_floor_3.close();	
+						gui_floor_4.close();
+						gui_roof.open();
+					}
+				}
+				
+				
+				
+				
+				
+				//addCubes.open();
+				//ex_STL.open();
+				
+			
+			} // end of displayGUI()
+			
+			
+			// SAVE FUNCTION
+			function save(){
+			
+				// We create the CSG arrays
+				/*corner[i][j]
+				beam_rect[i][j]
+				beam_cross[i][j]
+				column_rect[i][j]
+				column_cross[i][j]
+				column_cross2[i][j]
+				roof_top
+				roof_edge[i]*/
+				
+				var cornerBSP = [];
+				// We remove empty spaces
+				corner = corner.filter(Boolean); 
+				var lengthCorner = corner.length;	
+				
+				// Loops to create the new "CSG variables" inside the array
+				for (var i = 0; i < lengthCorner; i++ ){
+					cornerBSP[i] = [];
+					for (var j = 0; j < 4; j++ ){ // Every level has 4 corners
+						cornerBSP[i][j] = new ThreeBSP (corner[i][j]);
+					}
+				}
+				
+				// Loops to union the spheres and the cylinders
+				var cornerUnion = cornerBSP[0][0].union( cornerBSP[0][1] );
+				for (var j = 2; j < cornerBSP[0].length; j++ ){
+					cornerUnion = cornerUnion.union( cornerBSP[0][j] );
+				}
+				if (cornerBSP.length > 1){
+					for (var i = 1; i < cornerBSP.length; i++ ){
+						for (var j = 0; j < cornerBSP[i].length; j++ ){
+							cornerUnion = cornerUnion.union( cornerBSP[i][j] );
+						}
+					}
+				}
+				
+				var newMesh = cornerUnion.toMesh( material );
+				//saveSTL(newMesh, fileName);
+				saveSTL(scene, fileName);
+				
+				
+				
+				
+				
+				/*
+				var sphereBSP = [];
+				var cylinderBSP = [];
+				
+				// We remove empty spaces
+				sphere = sphere.filter(Boolean); 
+				cylinder = cylinder.filter(Boolean);
+				
+				var lengthSphere = sphere.length;			
+				var lengthCylinder = cylinder.length;		
+				
+				// Loops to create the new "CSG variables" inside the array
+				for (var i = 0; i < lengthSphere; i++ ){
+					sphereBSP[i] = new ThreeBSP (sphere[i]);
+				}
+				for (var j = 0; j < lengthCylinder; j++ ){
+					cylinderBSP[j] = new ThreeBSP (cylinder[j]);
+				}
+				
+				// Loops to union the spheres and the cylinders
+				var sphereUnion = sphereBSP[0].union( sphereBSP[1] );
+				for (var i = 2; i < sphereBSP.length; i++ ){
+					sphereUnion = sphereUnion.union( sphereBSP[i] );
+				}
+				var cylinderUnion = cylinderBSP[0].union (cylinderBSP[1])
+				for (var j = 2; j < cylinderBSP.length; j++ ){
+					cylinderUnion = cylinderUnion.union( cylinderBSP[j] );
+				}
+				
+				// Final union between spheres and cylinders
+				//var newBSP = sphereUnion.subtract ( cylinderUnion );
+				var newBSP = cylinderUnion.union ( sphereUnion );
+				var newMesh = newBSP.toMesh( material );
+				//var newMesh = sphereUnion.toMesh( material );
+				saveSTL(newMesh, fileName);*/
+			}	// end of save()
 			
 			
 			
