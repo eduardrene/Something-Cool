@@ -104,11 +104,11 @@
 			var gui, parameters;				// Variables for our GUI menu
 			
 			// Some variables at the moment to start
-			var wire_thickness = 1.5;			// "Wireframe" thickness
+			var wire_thickness = 0.5;			// "Wireframe" thickness
 			var h = 10;							// "Floor" height
 			var segments = 16;					// Number of segments (cylinders and spheres)
 			var fileName = "MyCubeWireframed"	// STL file name
-			var floors = 2;						// Number of floors (2 = ground + first floor)
+			var floors = 3;						// Number of floors (2 = ground + first floor)
 		
 			// Definition of the material
 			var material = new THREE.MeshLambertMaterial( {color: 0x2FA1D6} );
@@ -127,14 +127,23 @@
 			var corner = [];
 			var beam_rect = [];
 			var beam_cross = [];
-			var column = [];
+			var column_rect = [];
+			var column_cross = [];
+			var column_cross2 = [];
 			
 			// Array to define activity (on/off)
 			var beam_rect_on = [];
 			var beam_cross_on = [];
+			var column_rect_on = [];
+			var column_cross_on = [];
+			var column_cross2_on = [];
+			
 			for (var i=0; i<floors; i++){
 				beam_rect_on[i] = true;
 				beam_cross_on[i] = true;
+				column_rect_on[i] = true;
+				column_cross_on[i] = true;
+				column_cross2_on[i] = true;
 			}
 			
 			// Main functions to run our project!!!
@@ -206,6 +215,7 @@
 				
 				sphereBuilder(floors,h);
 				beamBuilder (floors, h);
+				columnBuilder (floors-1, h);
 				//cylinderBuilder(0,0,0,0);
 				//addCubeOnSide (negX, posX, negY, posY, negZ, posZ);
 				scene.add(ambientLight);
@@ -244,7 +254,7 @@
 						scene.add( corner[i][j]);
 					}
 				}
-			} // end of sphereBuilder
+			} // end of sphereBuilder()
 			
 			// OUR SECOND BUILDER: we create all the beams for each floor
 			function beamBuilder (floor, height){
@@ -261,7 +271,7 @@
 						beam_rect[i] = [];		// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
 									
-						for (var j=0; j<4; j++){ //En movem entre els 4 cylindres
+						for (var j=0; j<4; j++){ // We move within the 4 cylindres
 							
 							
 							if (j < 2){
@@ -297,7 +307,7 @@
 						beam_cross[i] = [];		// Array for each floor
 						var inc = i * height;	// Increment = i times the height of the floor
 						
-						for (var j=0; j<2; j++){ //En movem entre els 2 cylindres
+						for (var j=0; j<2; j++){ // We move within the 2 cylindres
 						
 							beam_cross[i][j] = new THREE.Mesh( cylinder, material );
 							beam_cross[i][j].position.set (0, inc, 0);
@@ -312,76 +322,95 @@
 					}
 					
 				}
-			} // end of beamBuilder
+			} // end of beamBuilder()
 			
+			// OUR THIRD BUILDER: we create all the columns for each floor
+			function columnBuilder (floor, height){
 			
+				for (var i=0; i<floor; i++){
 			
-			
-			/*
-			// OUR SECOND BUILDER: we create all our cube edges with cylinders
-			function cylinderBuilder (incX,incY,incZ,cube){
-			
-				edge = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
-				var x = h; var y = h; var z = h;
-				var start;
-				
-				switch (cube){
+					if (column_rect_on[i] == true){			
 					
-					case 0: 		start = 0; 	break;
-					case "negX":	start = 12;	break;
-					case "posX":	start = 24;	break;
-					case "negY":	start = 36;	break;
-					case "posY":	start = 48;	break;
-					case "negZ":	start = 60;	break;
-					case "posZ":	start = 72;	break;					
+						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, h, segments );
+						var x = h; 
+						var y = h; 
+						var z = h;
+						
+						column_rect[i] = [];	// Array for each floor
+						var inc = i * height;	// Increment = i times the height of the floor
+									
+						for (var j=0; j<4; j++){ // We move within the 4 cylindres
+							
+							x = -x;						// Alternation -+-+
+							if ((j == 2) || (j == 3)){	// Alternation ++--
+								z = -Math.abs(z);
+							}
+							
+							column_rect[i][j] = new THREE.Mesh( cylinder, material );
+							column_rect[i][j].position.set (x/2, y/2+inc, z/2);
+						
+							scene.add(column_rect[i][j]);	
+						}
+					}
+					
+					if (column_cross_on[i] == true){	
+					
+						// Aquesta es la longitud entre punts!!!
+						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i+1][1].position );
+						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
+						var x = h; 
+						var y = h; 
+						var z = h;
+						
+						column_cross[i] = [];	// Array for each floor
+						var inc = i * height;	// Increment = i times the height of the floor
+						
+						for (var j=0; j<8; j++){ // We move within the 8 cylindres
+						
+							column_cross[i][j] = new THREE.Mesh( cylinder, material );
+							if ((j==0)||(j==1)){column_cross[i][j].position.set (0, y/2+inc, z/2);}
+							if ((j==2)||(j==3)){column_cross[i][j].position.set (0, y/2+inc, -z/2);}
+							if ((j==4)||(j==5)){column_cross[i][j].position.set (x/2, y/2+inc, 0);}
+							if ((j==6)||(j==7)){column_cross[i][j].position.set (-x/2, y/2+inc, 0);}
+						
+							// Cylinder rotation
+							if ((j==0)||(j==2)){column_cross[i][j].rotation.z = Math.PI / 4;}
+							if ((j==1)||(j==3)){column_cross[i][j].rotation.z = - Math.PI / 4;}
+							if ((j==4)||(j==6)){column_cross[i][j].rotation.x = Math.PI / 4;}
+							if ((j==5)||(j==7)){column_cross[i][j].rotation.x = - Math.PI / 4;}
+							
+							scene.add( column_cross[i][j] );
+						}
+					}
+					
+					if (column_cross2_on[i] == true){
+						
+						var direction = new THREE.Vector3().subVectors( corner[i][0].position, corner[i+1][3].position );
+						cylinder = new THREE.CylinderGeometry( wire_thickness, wire_thickness, direction.length(), segments );
+						var x = h; 
+						var y = h; 
+						var z = h;
+					
+						column_cross2[i] = [];	// Array for each floor
+						var inc = i * height;	// Increment = i times the height of the floor
+					
+						for (var j=0; j<4; j++){ // We move within the 2 cylindres
+						
+							column_cross2[i][j] = new THREE.Mesh( cylinder, material );
+							column_cross2[i][j].position.set (0, y/2+inc, 0);
+							
+							// Cylinder rotation
+							if ((j==0)||(j==1)){column_cross2[i][j].rotation.z = 35.26 * Math.PI / 180;}
+							if ((j==2)||(j==3)){column_cross2[i][j].rotation.z = -35.26 * Math.PI / 180;}
+							if ((j==0)||(j==2)){column_cross2[i][j].rotation.x = Math.PI / 4;}
+							if ((j==1)||(j==3)){column_cross2[i][j].rotation.x = - Math.PI / 4;}
+							
+							scene.add( column_cross2[i][j] );
+						
+						}
+					}					
 				}
-				
-				for (var i=start; i<start+12; i++){
-				
-					if (i < start+4){	// Loop within the first 4 cylinders
-						x = 0;			// X value is 0
-						y = -y;			// Switching Y value (-+-+)
-						
-						if ((i == start+2) || (i == start+3)){
-							z = -Math.abs(z);
-						}
-					}
-										
-					if ((i > start+3) && (i < start+8)){
-						if (x == 0){x = h;} // Restart of X value
-						x = -x;				// Switching X value (-+-+)
-						y = 0;				// Y value is 0
-						z = h;				// Restart of Z value
-						
-						if ((i == start+6) || (i == start+7)){
-							z = -Math.abs(z);
-						}
-					}
-					
-					if (i > start+7){		// Loop within the last 4 cylinders
-						if (y == 0){y = h;} // Restart of Y value
-						x = -x;				// Switching X value (-+-+)
-						z = 0;				// Z value is 0
-						
-						if ((i == start+10) || (i == start+11)){
-							y = -Math.abs(y);
-						}
-					}
-					//alert("cylinder["+i+"] position is x="+x+", y="+y+", z="+z);
-					cylinder[i] = new THREE.Mesh( edge, material );
-					cylinder[i].position.set (x/2+incX, y/2+incY, z/2+incZ);
-					
-					//	Cylinder rotation
-					if (i < start+4){cylinder[i].rotation.z = Math.PI / 2;}
-					if (i > start+7){cylinder[i].rotation.x = Math.PI / 2;}
-					
-					scene.add( cylinder[i]);
-				}
-				// Restart the array, just in case
-				if (cylinder.length == 85){cylinder.length = 0}
-			}
-			*/
-			
+			} // end of columnBuilder()
 			
 			
 			
